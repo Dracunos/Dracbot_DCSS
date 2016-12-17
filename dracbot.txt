@@ -1,0 +1,720 @@
+## I wouldn't exactly call it a bot, so much as a 'tab and o' machine.
+
+#################
+# moving some settings up top for easy access
+species = hu, ds, fo, gr, gh, ho, mi, mf, og, te, tr, vs
+
+background = fi, gl, mo, be, ck, wn, sk
+
+autopickup = $(%0
+
+fire_order = launcher, return, javelin, tomahawk, stone
+
+message_colour ^= mute:Unknown command
+
+use_fake_player_cursor = false
+
+macros += M ] ===toggle_bot
+
+# autostart
+: bot_active = true
+: db_mode = false
+
+# choose_stat_gain() is called during stat gain level up prompt
+: function choose_stat_gain()
+:   db_mess("Choosing dex")
+:   return "d"
+: end
+
+# function gets called by crawl when there's a prompt
+: function c_answer_prompt(prompt)
+:   return true
+: end
+#################
+# TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+# Maaaybe eventually let him upgrade weaps
+# Either take Wn off, or teach him to unwield non melee weapons
+# Turn off throwing against polearms and dart slugs
+# Change toggle to on/off, or fix issue with toggle not going thru
+#################
+# Random stuff
+## !lg quibfiddle killer~~dracbot 1 -log
+# Dracbot's ghost says, "I am invincible!"
+# Dracbot's ghost hits you.
+# You die...
+
+#################
+
+bindkey = [~] CMD_LUA_CONSOLE
+
+show_more = false
+
+force_more_message =
+
+runrest_stop_message = here is an entrance to .+ Shop here
+
+auto_exclude =
+
+weapon = viable
+
+restart_after_game = true
+
+explore_auto_rest = true
+
+auto_exclude += sigmund, grinder, duvessa
+
+easy_confirm = all
+
+allow_self_target = yes
+
+confirm_butcher = never
+
+easy_eat_chunks = true
+
+auto_sacrifice = true
+
+autofight_stop = 0
+
+autofight_throw = true
+
+autofight_caught = true
+
+explore_stop =
+
+: bot_mode = 'o'
+: crawl.enable_more(false)
+
+: function cprint(s)
+:   crawl.mpr(s)
+: end
+
+: function db_mess(s)
+:   if db_mode then
+:     cprint(s)
+:   end
+: end
+
+: function toggle_bot()
+:   if bot_active then
+:     bot_active = false
+:     crawl.mpr("Deactivating bot.")
+:   else
+:     bot_active = true
+:     crawl.mpr("Activating bot.")
+:     ready()
+:   end
+: end
+
+# ready() function is (hopefully) called after every turn/movement
+: function ready()
+:   if bot_active == false then
+:     return
+:   end
+:   db_mess("Ready called.")
+:   crawl.flush_input()
+:   crawl.more_autoclear(true)
+:   if db_mode then
+:     debug_mess = 1
+:   else
+:     debug_mess = 0
+:   end
+:   local messages = crawl.messages(1 + debug_mess)
+:   local o_messages = crawl.messages(5 + debug_mess)
+:   
+:   if string.gmatch(messages, "Done exploring")() then
+:     db_mess("Saw done explore, > mode.")
+:     bot_mode = '>'
+:   elseif string.gmatch(messages, "artly explored")() then
+:     db_mess("Saw partly explore, > mode.")
+:     bot_mode = '>'
+:   elseif string.gmatch(messages, "nearby")() then
+:     db_mess("Saw nea_rby, tab mode.")
+:     bot_mode = 'tab'
+:   elseif string.gmatch(messages, "Calm down first")() then
+:     db_mess("Saw calm down, c mode.")
+:     bot_mode = 'c'
+:   elseif string.gmatch(messages, "standing in a cloud of noxious fumes")() then
+:     db_mess("Saw noxious fumes, c mode.")
+:     bot_mode = 'c'
+:   elseif string.gmatch(o_messages, "here is a strange disturbance")() then
+:     db_mess("Saw strange disturbance, c mode.")
+:     bot_mode = 'c'
+:   elseif string.gmatch(o_messages, "here is a lethal amount")() then
+:     db_mess("Saw lethal amount, c mode.")
+:     bot_mode = 'c'
+:   elseif string.gmatch(messages, "No target in view")() then
+:     db_mess("Saw No target, o mode.")
+:     bot_mode = 'o'
+:   elseif string.gmatch(o_messages, "leading up here")() then
+:     db_mess("Saw leading up, o mode.")
+:     bot_mode = 'o'
+:   elseif string.gmatch(o_messages, "The hatch slams shut behind you")() then
+:     db_mess("Saw hatch slams shut, o mode.")
+:     bot_mode = 'o'
+:   end
+:   
+:   if you.confused() then
+:     db_mess("You.confused(), c mode.")
+:     bot_mode = 'c'
+:   elseif you.hunger() < 2 or bot_mode == 'o' and you.hunger() < 3 then
+:     db_mess("Saw hunger, e mode.")
+:     bot_mode = 'e'
+:   elseif bot_mode == 'e' and you.hunger() > 3 then
+:     db_mess("Not hungry, o mode.")
+:     bot_mode = 'o'
+:   end
+:   
+:   if bot_mode == 'o' then
+:     db_mess("Doing o mode.")
+:     crawl.sendkeys("o" .. string.char(27))
+:   elseif bot_mode == '>' then
+:     db_mess("Doing > mode.")
+:     crawl.sendkeys("G>")
+:   elseif bot_mode == 'c' then
+:     crawl.mpr("Activating 'c' mode.")
+:     local randkeys = c_mode()
+:     crawl.sendkeys(randkeys)
+:   elseif bot_mode == 'e' then
+:     local food = eat_mode()
+:     if food then
+:       crawl.mpr("Eating, hopefully.")
+:       crawl.sendkeys("e" .. food)
+:     else
+:       crawl.mpr("Food DOES matter! :O")
+:       local randkeys = c_mode()
+:       crawl.sendkeys(randkeys)
+:     end
+:   else
+:     db_mess("Doing tab mode.")
+:     attack(1)
+:   end
+:   crawl.delay(1000)
+: end
+
+: function c_mode()
+:   local directions = {'h', 'j', 'k', 'l', 'b', 'n', 'y', 'u', '>', '<', 'o'}
+:   local randkeys = ''
+:   for i, v in pairs(directions) do
+:     randkeys = randkeys .. directions[math.random(1, 11)]
+:   end
+:   return randkeys
+: end
+
+: function eat_mode()
+:   local food = false
+:   for x, c in pairs(items.inventory()) do
+:     if string.find(c.name(), 'chunk') then
+:       food = items.index_to_letter(c.slot)
+:     elseif match_food(c.name()) then
+:       food = items.index_to_letter(c.slot)
+:     end
+:   end
+:   return food
+: end
+
+: function match_food(food)
+:   if (string.find(food, 'ration') or string.find(food, 'ruit') or
+:       string.find(food, 'pizza') or string.find(food, 'eef jerk') or
+:       string.find(food, 'oyal jell')) then
+:     return true
+:   end
+: end
+
+
+
+
+
+
+#########################################
+# stealing crawl's very own autofight.lua.. and sticking some ready()'s in :p
+# thanks robx, and all the other contributors
+
+# ---------------------------------------------------------------------------
+# -- autofight.lua:
+# -- One-key fighting.
+# --
+# -- To use this, please bind a key to the following commands:
+# -- ===hit_closest         (Tab by default)
+# -- ===hit_closest_nomove  (Shift-Tab by default)
+# -- ===toggle_autothrow    (not bound by default)
+# --
+# -- This uses the very incomplete client monster and view bindings, and
+# -- is currently very primitive. Improvements welcome!
+# ---------------------------------------------------------------------------
+
+: ATT_HOSTILE = 0
+: ATT_NEUTRAL = 1
+: 
+: LOS_RADIUS = 7
+: 
+: AUTOFIGHT_STOP = 0
+: AUTOFIGHT_HUNGER_STOP = 0
+: AUTOFIGHT_HUNGER_STOP_UNDEAD = false
+: AUTOFIGHT_CAUGHT = true
+: AUTOFIGHT_THROW = true
+: AUTOFIGHT_THROW_NOMOVE = false
+: AUTOFIGHT_FIRE_STOP = false
+: AUTOFIGHT_WAIT = false
+: AUTOFIGHT_PROMPT_RANGE = false
+: AUTOMAGIC_ACTIVE = false
+: 
+: function delta_to_vi(dx, dy)
+:   local d2v = {
+:     [-1] = { [-1] = "CMD_MOVE_UP_LEFT",  [0] = "CMD_MOVE_LEFT",  [1] = "CMD_MOVE_DOWN_LEFT"},
+:     [0]  = { [-1] = "CMD_MOVE_UP",                               [1] = "CMD_MOVE_DOWN"},
+:     [1]  = { [-1] = "CMD_MOVE_UP_RIGHT", [0] = "CMD_MOVE_RIGHT", [1] = "CMD_MOVE_DOWN_RIGHT"},
+:   }
+:   return d2v[dx][dy]
+: end
+: 
+: function target_delta_to_vi(dx, dy)
+:   local d2v = {
+:     [-1] = { [-1] = "CMD_TARGET_UP_LEFT",  [0] = "CMD_TARGET_LEFT",  [1] = "CMD_TARGET_DOWN_LEFT"},
+:     [0]  = { [-1] = "CMD_TARGET_UP",                                 [1] = "CMD_TARGET_DOWN"},
+:     [1]  = { [-1] = "CMD_TARGET_UP_RIGHT", [0] = "CMD_TARGET_RIGHT", [1] = "CMD_TARGET_DOWN_RIGHT"},
+:   }
+:   return d2v[dx][dy]
+: end
+: 
+: function sign(a)
+:   return a > 0 and 1 or a < 0 and -1 or 0
+: end
+: 
+: function abs(a)
+:   return a * sign(a)
+: end
+: 
+: function adjacent(dx, dy)
+:   return abs(dx) <= 1 and abs(dy) <= 1
+: end
+: 
+: function vector_move(a, dx, dy)
+:   for i = 1,abs(dx) do
+:     a[#a+1] = target_delta_to_vi(sign(dx), 0)
+:   end
+:   for i = 1,abs(dy) do
+:     a[#a+1] = target_delta_to_vi(0, sign(dy))
+:   end
+: end
+: 
+: function have_reaching()
+:   local wp = items.equipped_at("weapon")
+:   return wp and wp.reach_range == 2 and not wp.is_melded
+: end
+: 
+: function have_ranged()
+:   local wp = items.equipped_at("weapon")
+:   return wp and wp.is_ranged and not wp.is_melded
+: end
+: 
+: function have_throwing(no_move)
+:   return (AUTOFIGHT_THROW or no_move and AUTOFIGHT_THROW_NOMOVE) and items.fired_item() ~= nil
+: end
+: 
+: function is_safe_square(dx, dy)
+:     if view.feature_at(dx, dy) == "trap_web" then
+:         return false
+:     end
+:     return view.is_safe_square(dx, dy)
+: end
+: 
+: function can_move_maybe(dx, dy)
+:   if view.feature_at(dx,dy) ~= "unseen" and view.is_safe_square(dx,dy) then
+:     local m = monster.get_monster_at(dx, dy)
+:     if not m or not m:is_firewood() then
+:       return true
+:     end
+:   end
+:   return false
+: end
+: 
+: function can_move_now(dx, dy)
+:   local m = monster.get_monster_at(dx, dy)
+:   -- attitude > ATT_NEUTRAL should mean you can push past the monster
+:   return (is_safe_square(dx, dy) and (not m or m:attitude() > ATT_NEUTRAL))
+: end
+: 
+: function choose_move_towards(ax, ay, bx, by, square_func)
+:   local move = nil
+:   local dx = bx - ax
+:   local dy = by - ay
+:   local function try_move(mx, my)
+:     if mx == 0 and my == 0 then
+:       return nil
+:     elseif abs(ax+mx) > LOS_RADIUS or abs(ay+my) > LOS_RADIUS then
+:       return nil
+:     elseif square_func(ax+mx, ay+my) then
+:       return {mx,my}
+:     else
+:       return nil
+:     end
+:   end
+:   if abs(dx) > abs(dy) then
+:     if abs(dy) == 1 then
+:       move = try_move(sign(dx), 0)
+:     end
+:     if move == nil then move = try_move(sign(dx), sign(dy)) end
+:     if move == nil then move = try_move(sign(dx), 0) end
+:     if move == nil and abs(dx) > abs(dy)+1 then
+:       move = try_move(sign(dx), 1)
+:     end
+:     if move == nil and abs(dx) > abs(dy)+1 then
+:       move = try_move(sign(dx), -1)
+:     end
+:     if move == nil then move = try_move(0, sign(dy)) end
+:   elseif abs(dx) == abs(dy) then
+:     move = try_move(sign(dx), sign(dy))
+:     if move == nil then move = try_move(sign(dx), 0) end
+:     if move == nil then move = try_move(0, sign(dy)) end
+:   else
+:     if abs(dx) == 1 then
+:       move = try_move(0, sign(dy))
+:     end
+:     if move == nil then move = try_move(sign(dx), sign(dy)) end
+:     if move == nil then move = try_move(0, sign(dy)) end
+:     if move == nil and abs(dy) > abs(dx)+1 then
+:       move = try_move(1, sign(dy))
+:     end
+:     if move == nil and abs(dy) > abs(dx)+1 then
+:       move = try_move(-1, sign(dy))
+:     end
+:     if move == nil then move = try_move(sign(dx), 0) end
+:   end
+:   return move
+: end
+: 
+: function move_towards(dx, dy)
+:   local move = choose_move_towards(0, 0, dx, dy, can_move_now)
+:   if move == nil then
+:     crawl.mpr("Failed to move towards target.")
+:     bot_mode = 'c'
+:     ready()
+:   else
+:     crawl.do_commands({delta_to_vi(move[1],move[2])})
+:   end
+: end
+: 
+: function will_tab(ax, ay, bx, by)
+:   if abs(bx-ax) <= 1 and abs(by-ay) <= 1 or
+:      abs(bx-ax) <= 2 and abs(by-ay) <= 2 and have_reaching() then
+:     return true
+:   end
+:   local move = choose_move_towards(ax, ay, bx, by, can_move_maybe)
+:   if move == nil then
+:     return false
+:   end
+:   return will_tab(ax+move[1], ay+move[2], bx, by)
+: end
+: 
+: function get_monster_info(dx,dy,no_move)
+:   m = monster.get_monster_at(dx,dy)
+:   name = m:name()
+:   if not m then
+:     return nil
+:   end
+:   info = {}
+:   info.distance = (abs(dx) > abs(dy)) and -abs(dx) or -abs(dy)
+:   if have_ranged() then
+:     info.attack_type = you.see_cell_no_trans(dx, dy) and 3 or 0
+:   elseif not have_reaching() then
+:     info.attack_type = (-info.distance < 2) and 2 or 0
+:   else
+:     if -info.distance > 2 then
+:       info.attack_type = 0
+:     elseif -info.distance < 2 then
+:       info.attack_type = 2
+:     else
+:       info.attack_type = view.can_reach(dx, dy) and 1 or 0
+:     end
+:   end
+:   if info.attack_type == 0 and have_throwing(no_move) and you.see_cell_no_trans(dx, dy) then
+:     -- Melee is better than throwing.
+:     info.attack_type = 3
+:   end
+:   if info.attack_type == 0 and not will_tab(0,0,dx,dy) then
+:     info.attack_type = -1
+:   end
+:   info.can_attack = (info.attack_type > 0) and 1 or info.attack_type
+:   info.safe = m:is_safe() and -1 or 0
+:   info.constricting_you = m:is_constricting_you() and 1 or 0
+:   -- Only prioritize good stabs: sleep and paralysis.
+:   info.very_stabbable = (m:stabbability() >= 1) and 1 or 0
+:   info.injury = m:damage_level()
+:   info.threat = m:threat()
+:   info.orc_priest_wizard = (name == "orc priest" or name == "orc wizard") and 1 or 0
+:   return info
+: end
+: 
+: function compare_monster_info(m1, m2)
+:   flag_order = autofight_flag_order
+:   if flag_order == nil then
+:     flag_order = {"can_attack", "safe", "distance", "constricting_you", "very_stabbable", "injury", "threat", "orc_priest_wizard"}
+:   end
+:   for i,flag in ipairs(flag_order) do
+:     if m1[flag] > m2[flag] then
+:       return true
+:     elseif m1[flag] < m2[flag] then
+:       return false
+:     end
+:   end
+:   return false
+: end
+: 
+: function is_candidate_for_attack(x,y)
+:   m = monster.get_monster_at(x, y)
+:   --if m then crawl.mpr("Checking: (" .. x .. "," .. y .. ") " .. m:name()) end
+:   if not m or m:attitude() ~= ATT_HOSTILE then
+:     return false
+:   end
+:   if m:name() == "butterfly"
+:       or m:name() == "orb of destruction" then
+:     return false
+:   end
+:   if m:is_firewood() then
+:   --crawl.mpr("... is firewood.")
+:     if string.find(m:name(), "ballistomycete") then
+:       return true
+:     end
+:     return false
+:   end
+:   return true
+: end
+: 
+: function get_target(no_move)
+:   local x, y, bestx, besty, best_info, new_info
+:   bestx = 0
+:   besty = 0
+:   best_info = nil
+:   for x = -LOS_RADIUS,LOS_RADIUS do
+:     for y = -LOS_RADIUS,LOS_RADIUS do
+:       if is_candidate_for_attack(x, y) then
+:         new_info = get_monster_info(x, y, no_move)
+:         if (not best_info) or compare_monster_info(new_info, best_info) then
+:           bestx = x
+:           besty = y
+:           best_info = new_info
+:         end
+:       end
+:     end
+:   end
+:   return bestx, besty, best_info
+: end
+: 
+: function attack_fire(x,y)
+:   local a = {"CMD_FIRE", "CMD_TARGET_FIND_YOU"}
+:   vector_move(a, x, y)
+:   a[#a+1] = "CMD_TARGET_SELECT"
+:   crawl.do_commands(a, true)
+: end
+: 
+: function attack_fire_stop(x,y)
+:   local a = {"CMD_FIRE", "CMD_TARGET_FIND_YOU"}
+:   vector_move(a, x, y)
+:   a[#a+1] = "CMD_TARGET_SELECT_ENDPOINT"
+:   crawl.do_commands(a, true)
+: end
+: 
+: function attack_reach(x,y)
+:   local a = {"CMD_EVOKE_WIELDED", "CMD_TARGET_FIND_YOU"}
+:   vector_move(a, x, y)
+:   a[#a+1] = "CMD_TARGET_SELECT_ENDPOINT"
+:   crawl.do_commands(a, true)
+: end
+: 
+: function attack_melee(x,y)
+:   crawl.do_commands({delta_to_vi(x, y)})
+: end
+: 
+: function set_stop_level(key, value, mode)
+:   AUTOFIGHT_STOP = tonumber(value)
+: end
+: 
+: function set_hunger_stop_level(key, value, mode)
+:   AUTOFIGHT_HUNGER_STOP = tonumber(value)
+: end
+: 
+: function set_hunger_stop_undead(key, value, mode)
+:   AUTOFIGHT_HUNGER_STOP_UNDEAD = string.lower(value) ~= "false"
+: end
+: 
+: function set_af_caught(key, value, mode)
+:   AUTOFIGHT_CAUGHT = string.lower(value) ~= "false"
+: end
+: 
+: function set_af_throw(key, value, mode)
+:   AUTOFIGHT_THROW = string.lower(value) ~= "false"
+: end
+: 
+: function set_af_throw_nomove(key, value, mode)
+:   AUTOFIGHT_THROW_NOMOVE = string.lower(value) ~= "false"
+: end
+: 
+: function set_af_fire_stop(key, value, mode)
+:   AUTOFIGHT_FIRE_STOP = string.lower(value) ~= "false"
+: end
+: 
+: function set_af_wait(key, value, mode)
+:     AUTOFIGHT_WAIT = string.lower(value) ~= "false"
+: end
+: 
+: function set_af_prompt_range(key, value, mode)
+:     AUTOFIGHT_PROMPT_RANGE = string.lower(value) ~= "false"
+: end
+: 
+: function set_automagic(key, value, mode)
+:   AUTOMAGIC_ACTIVE = string.lower(value) ~= "false"
+: end
+: 
+: function af_hp_is_low()
+:   local hp, mhp = you.hp()
+:   return (100*hp <= AUTOFIGHT_STOP*mhp)
+: end
+: 
+: function af_food_is_low()
+:   if you.race() == "Mummy" or you.transform() == "lich" then
+:       return false
+:   elseif (not AUTOFIGHT_HUNGER_STOP_UNDEAD)
+:          and (you.race() == "Vampire" or you.race() == "Ghoul") then
+:       return false
+:   else
+:       return (AUTOFIGHT_HUNGER_STOP ~= nil
+:               and you.hunger() <= AUTOFIGHT_HUNGER_STOP)
+:   end
+: end
+: 
+: function attack(allow_movement)
+:   local x, y, info = get_target(not allow_movement)
+:   local caught = you.caught()
+:   if af_hp_is_low() then
+:     crawl.mpr("You are too injured to fight recklessly!")
+:     bot_mode = 'c'
+:     ready()
+:   elseif af_food_is_low() then
+:     crawl.mpr("You are too hungry to fight recklessly!")
+:     bot_mode = 'c'
+:     ready()
+:   elseif you.confused() then
+:     crawl.mpr("You are too confused!")
+:     ready()
+:   elseif caught then
+:     if AUTOFIGHT_CAUGHT then
+:       crawl.do_commands({delta_to_vi(1, 0)}) -- Direction doesn't matter.
+:     else
+:       crawl.mpr("You are " .. caught .. "!")
+:       bot_mode = 'c'
+:       ready()
+:     end
+:   elseif info == nil then
+:     if AUTOFIGHT_WAIT and not allow_movement then
+:       crawl.do_commands({"CMD_WAIT"})
+:     else
+:       crawl.mpr("No target in view!")
+:       bot_mode = 'o'
+:       ready()
+:     end
+:   elseif info.attack_type == 3 then
+:     if AUTOFIGHT_FIRE_STOP then
+:       attack_fire_stop(x,y)
+:     else
+:       attack_fire(x,y)
+:     end
+:   elseif info.attack_type == 2 then
+:     attack_melee(x,y)
+:   elseif info.attack_type == 1 then
+:     attack_reach(x,y)
+:   elseif info.attack_type == -1 then
+:     crawl.mpr("No reachable target in view!")
+:     bot_mode = 'c'
+:     ready()
+:   elseif allow_movement then
+:     if not AUTOFIGHT_PROMPT_RANGE or crawl.weapon_check() then
+:       move_towards(x,y)
+:     end
+:   elseif AUTOFIGHT_WAIT then
+:     crawl.do_commands({"CMD_WAIT"})
+:   else
+:     crawl.mpr("No target in range!")
+:     bot_mode = 'c'
+:     ready()
+:   end
+: end
+: 
+: function hit_closest()
+:   if AUTOMAGIC_ACTIVE and you.spell_table()[AUTOMAGIC_SPELL_SLOT] then
+:     mag_attack(true)
+:   else
+:     attack(true)
+:   end
+: end
+: 
+: function hit_closest_nomove()
+:   if AUTOMAGIC_ACTIVE and you.spell_table()[AUTOMAGIC_SPELL_SLOT] then
+:     mag_attack(false)
+:   else
+:     attack(false)
+:   end
+: end
+: 
+: function hit_nonmagic()
+:   attack(true)
+: end
+: 
+: function hit_nonmagic_nomove()
+:   attack(false)
+: end
+: 
+: function hit_magic()
+:   if you.spell_table()[AUTOMAGIC_SPELL_SLOT] then
+:     mag_attack(true)
+:   else
+:     crawl.mpr("No spell in slot " .. AUTOMAGIC_SPELL_SLOT .. "!")
+:   end
+: end
+: 
+: function hit_magic_nomove()
+:   if you.spell_table()[AUTOMAGIC_SPELL_SLOT] then
+:     mag_attack(false)
+:   else
+:     crawl.mpr("No spell in slot " .. AUTOMAGIC_SPELL_SLOT .. "!")
+:   end
+: end
+: 
+: function toggle_autothrow()
+:   AUTOFIGHT_THROW = not AUTOFIGHT_THROW
+:   crawl.mpr(AUTOFIGHT_THROW and "Enabling autothrow." or "Disabling autothrow.")
+: end
+
+# chk_lua_option.autofight_stop = set_stop_level
+# chk_lua_option.autofight_hunger_stop = set_hunger_stop_level
+# chk_lua_option.autofight_hunger_stop_undead = set_hunger_stop_undead
+# chk_lua_option.autofight_caught = set_af_caught
+# chk_lua_option.autofight_throw = set_af_throw
+# chk_lua_option.autofight_throw_nomove = set_af_throw_nomove
+# chk_lua_option.autofight_fire_stop = set_af_fire_stop
+# chk_lua_option.autofight_wait = set_af_wait
+# chk_lua_option.autofight_prompt_range = set_af_prompt_range
+# chk_lua_option.automagic_enable = set_automagic
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
