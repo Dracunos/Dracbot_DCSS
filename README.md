@@ -1,3 +1,8 @@
+####There are macros defined in this RC. That means if you stick this in your own RC file it will overwrite your macros file, meaning you will lose all your macros that you've defined in-game. Macros defined in your rc won't be overwritten, but there may be conflicts.
+
+Line 48 and 17 are the ones that will overwrite your current macros file.
+
+
 "I wouldn't exactly call it a bot, so much as a 'tab and o' machine."
 
 This is a simple LUA bot for DCSS. I mean, dead simple.. Most of the code was just grabbed from the autofight.lua directly from the DCSS source code. It basically uses 'tab', to autoattack via the ingame autofight mechanics, and uses 'o' to autoexplore via the ingame autoexplore mechanics.
